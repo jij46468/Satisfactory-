@@ -10,6 +10,7 @@ import { formatValue } from './utils/calculator';
 import { solveSystemOfEquations } from './utils/systemSolver';
 import { Header } from './components/Header';
 import { SystemEquationsSection } from './components/SystemEquationsSection';
+import { OfflineBanner } from './components/OfflineBanner';
 import { Copy, Check, RotateCcw, History, Star, Sparkles, Globe } from 'lucide-react';
 
 // Lazy load non-critical modal components to minimize initial JS bundle size and accelerate startup
@@ -459,6 +460,9 @@ export default function App() {
           />
         </Suspense>
       )}
+
+      {/* Connectivity status banner when offline */}
+      <OfflineBanner />
     </div>
   );
 }

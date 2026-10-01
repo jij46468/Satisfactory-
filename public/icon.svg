@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#020617" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+
+    <!-- Accent Gradient -->
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+
+    <!-- Cyan/Sky Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Amber Glow Gradient -->
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Base rounded squircle with subtle border -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#334155" stroke-width="4" stroke-opacity="0.5" />
+
+  <!-- Multi-layer interconnected calculation nodes & ratio lines -->
+  <g transform="translate(0, 0)">
+    <!-- Connection lines -->
+    <path d="M140 180 L256 120 L372 180" fill="none" stroke="url(#cyanGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
+    <path d="M140 180 L198 330 L314 330 L372 180" fill="none" stroke="url(#primaryGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+    <path d="M256 120 L256 240 L256 390" fill="none" stroke="#a855f7" stroke-width="8" stroke-linecap="round" stroke-dasharray="14 10" opacity="0.85" />
+
+    <!-- Center Equation Equal Bars -->
+    <rect x="220" y="222" width="72" height="14" rx="7" fill="url(#amberGrad)" filter="url(#glow)" />
+    <rect x="220" y="248" width="72" height="14" rx="7" fill="url(#amberGrad)" filter="url(#glow)" />
+
+    <!-- Chain Nodes -->
+    <!-- Top Root Node (e.g. Ratio Total) -->
+    <circle cx="256" cy="120" r="32" fill="url(#cyanGrad)" filter="url(#glow)" />
+    <circle cx="256" cy="120" r="16" fill="#ffffff" />
+
+    <!-- Left Variable Node (A) -->
+    <circle cx="140" cy="180" r="28" fill="url(#primaryGrad)" />
+    <text x="140" y="188" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="24" fill="#ffffff" text-anchor="middle">A</text>
+
+    <!-- Right Variable Node (B) -->
+    <circle cx="372" cy="180" r="28" fill="url(#primaryGrad)" />
+    <text x="372" y="188" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="24" fill="#ffffff" text-anchor="middle">B</text>
+
+    <!-- Bottom Left Node (C) -->
+    <circle cx="198" cy="330" r="24" fill="#6366f1" />
+    <text x="198" y="337" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="20" fill="#ffffff" text-anchor="middle">C</text>
+
+    <!-- Bottom Right Node (D) -->
+    <circle cx="314" cy="330" r="24" fill="#6366f1" />
+    <text x="314" y="337" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="20" fill="#ffffff" text-anchor="middle">D</text>
+
+    <!-- Output Balance Node (Bottom center) -->
+    <circle cx="256" cy="390" r="28" fill="url(#amberGrad)" filter="url(#glow)" />
+    <!-- Sigma / Math Symbol inside output -->
+    <path d="M246 378 L266 378 L256 390 L266 402 L246 402" fill="none" stroke="#0f172a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>
