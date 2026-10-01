@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* Hide HTML5 spin buttons on number inputs for clean mobile calculator feel */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Hide scrollbar for clean horizontal tab sliders */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Base body background */
+body {
+  background-color: #020617;
+  color: #f8fafc;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Enable text selection inside input fields */
+input, textarea {
+  user-select: text;
+}

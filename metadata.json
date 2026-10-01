@@ -1,0 +1,6 @@
+{
+  "name": "比率・方程式計算機 (Ratio & Linear Calculator)",
+  "description": "無制限の式・変数を扱える連立方程式・多段チェーン計算機。ガウス消去法と連鎖代入により、未定係数系や比例混合バランスを自動解決する高機能計算アプリ",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
