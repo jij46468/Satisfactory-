@@ -10,7 +10,7 @@ import { formatValue } from './utils/calculator';
 import { solveSystemOfEquations } from './utils/systemSolver';
 import { Header } from './components/Header';
 import { SystemEquationsSection } from './components/SystemEquationsSection';
-import { Copy, Check, RotateCcw, History, Star, Sparkles } from 'lucide-react';
+import { Copy, Check, RotateCcw, History, Star, Sparkles, Globe } from 'lucide-react';
 
 // Lazy load non-critical modal components to minimize initial JS bundle size and accelerate startup
 const PresetsModal = React.lazy(() =>
@@ -19,11 +19,15 @@ const PresetsModal = React.lazy(() =>
 const HistoryDrawer = React.lazy(() =>
   import('./components/HistoryDrawer').then((m) => ({ default: m.HistoryDrawer }))
 );
+const GitHubPagesModal = React.lazy(() =>
+  import('./components/GitHubPagesModal').then((m) => ({ default: m.GitHubPagesModal }))
+);
 
 // Preload helper for instant modal opening
 const preloadModals = () => {
   import('./components/PresetsModal');
   import('./components/HistoryDrawer');
+  import('./components/GitHubPagesModal');
 };
 
 // Default initial state: Empty equations
@@ -76,6 +80,7 @@ export default function App() {
   // Modals & History State
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isGithubGuideOpen, setIsGithubGuideOpen] = useState(false);
   const [customPresets, setCustomPresets] = useState<PresetItem[]>(() => {
     try {
       const saved = localStorage.getItem('system_custom_presets');
@@ -205,7 +210,7 @@ export default function App() {
       description: validEquations.join(' / ') || '連立方程式セット',
       category,
       equations: validEquations,
-      userOverrides: systemConfig.userOverrides as Record<string, number>,
+      userOverrides: systemConfig.userOverrides,
       variableMemos: systemConfig.variableMemos || {},
     };
     setCustomPresets((prev) => [newPreset, ...prev]);
@@ -293,6 +298,10 @@ export default function App() {
         onOpenHistory={() => {
           preloadModals();
           setIsHistoryOpen(true);
+        }}
+        onOpenGithubGuide={() => {
+          preloadModals();
+          setIsGithubGuideOpen(true);
         }}
         historyCount={history.length}
         bookmarkedCount={bookmarkCount}
@@ -392,6 +401,22 @@ export default function App() {
               <span className="pointer-events-none">プリセット & 保存</span>
             </button>
           </div>
+
+          {/* GitHub Pages Deployment Guide Banner/Button */}
+          <button
+            type="button"
+            onMouseEnter={preloadModals}
+            onTouchStart={preloadModals}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsGithubGuideOpen(true);
+            }}
+            className="w-full mt-3 py-2.5 px-3 rounded-2xl bg-slate-900/80 hover:bg-slate-850 active:scale-[0.99] border border-sky-500/30 hover:border-sky-500/60 text-sky-300 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+          >
+            <Globe className="w-4 h-4 text-sky-400 pointer-events-none" />
+            <span className="pointer-events-none">GitHub Pages 公開ガイド & デプロイ手順</span>
+          </button>
         </div>
       </main>
 
@@ -421,6 +446,16 @@ export default function App() {
             onToggleBookmark={handleToggleBookmark}
             onDeleteEntry={handleDeleteHistoryEntry}
             onUpdateNote={handleUpdateHistoryNote}
+          />
+        </Suspense>
+      )}
+
+      {/* Lazy-loaded GitHub Pages Deployment Guide Modal */}
+      {isGithubGuideOpen && (
+        <Suspense fallback={null}>
+          <GitHubPagesModal
+            isOpen={isGithubGuideOpen}
+            onClose={() => setIsGithubGuideOpen(false)}
           />
         </Suspense>
       )}

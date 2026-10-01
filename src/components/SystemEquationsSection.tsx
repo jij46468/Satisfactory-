@@ -7,9 +7,17 @@ import {
   detectRatioEquation,
   flipEquationCoefficients,
   parseEquationToRecipe,
+  normalizeVariableValue,
 } from '../utils/systemSolver';
 import { formatValue } from '../utils/calculator';
-import { BomFlowchartModal } from './BomFlowchartModal';
+
+// Lazy-load BomFlowchartModal on demand to keep initial JS bundle ultra lightweight
+const BomFlowchartModal = React.lazy(() =>
+  import('./BomFlowchartModal').then((m) => ({ default: m.BomFlowchartModal }))
+);
+const preloadBomFlowchart = () => {
+  import('./BomFlowchartModal');
+};
 import {
   Plus,
   Trash2,
@@ -132,6 +140,10 @@ export const SystemEquationsSection: React.FC<SystemEquationsSectionProps> = Rea
   // In-card editing of memo state
   const [editingMemoVar, setEditingMemoVar] = useState<string | null>(null);
   const [memoInputText, setMemoInputText] = useState<string>('');
+
+  // In-card editing of variable override (preserves live typing of full-width, arithmetic expressions, commas, etc.)
+  const [activeOverrideVar, setActiveOverrideVar] = useState<string | null>(null);
+  const [activeOverrideText, setActiveOverrideText] = useState<string>('');
 
   // Solve the system with current config
   const solveResult: SystemSolveResult = useMemo(() => {
@@ -276,13 +288,11 @@ export const SystemEquationsSection: React.FC<SystemEquationsSectionProps> = Rea
   // Handle user override for a specific variable
   const handleVarOverrideChange = (varName: string, valStr: string) => {
     const newOverrides = { ...config.userOverrides };
-    if (valStr.trim() === '') {
-      delete newOverrides[varName];
+    const normalized = normalizeVariableValue(valStr);
+    if (normalized !== null) {
+      newOverrides[varName] = normalized;
     } else {
-      const parsed = parseFloat(valStr);
-      if (!isNaN(parsed)) {
-        newOverrides[varName] = parsed;
-      }
+      delete newOverrides[varName];
     }
     onChangeConfig({ ...config, userOverrides: newOverrides });
   };
@@ -470,6 +480,8 @@ export const SystemEquationsSection: React.FC<SystemEquationsSectionProps> = Rea
             <button
               type="button"
               onClick={() => setShowBomFlowchart(true)}
+              onMouseEnter={preloadBomFlowchart}
+              onTouchStart={preloadBomFlowchart}
               className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer shrink-0"
               title="BOM生産フローチャート（合算・依存ダイアグラム）を表示"
             >
@@ -838,15 +850,41 @@ export const SystemEquationsSection: React.FC<SystemEquationsSectionProps> = Rea
                   <div className="pt-1.5 border-t border-slate-900 flex items-center gap-1.5">
                     <span className="text-[10px] text-slate-500 whitespace-nowrap">固定/指定:</span>
                     <input
-                      type="number"
-                      placeholder="指定..."
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="指定 (例: 100, 10/2, 25%)"
+                      title="数値、全角数字（１００）、カンマ（1,000）、計算式（10/2）、パーセント（25%）を入力可能"
                       value={
-                        config.userOverrides[varName] !== undefined &&
-                        config.userOverrides[varName] !== null
-                          ? config.userOverrides[varName]!
+                        activeOverrideVar === varName
+                          ? activeOverrideText
+                          : config.userOverrides[varName] !== undefined &&
+                            config.userOverrides[varName] !== null
+                          ? String(config.userOverrides[varName])
                           : ''
                       }
-                      onChange={(e) => handleVarOverrideChange(varName, e.target.value)}
+                      onFocus={() => {
+                        setActiveOverrideVar(varName);
+                        setActiveOverrideText(
+                          config.userOverrides[varName] !== undefined &&
+                            config.userOverrides[varName] !== null
+                            ? String(config.userOverrides[varName])
+                            : ''
+                        );
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setActiveOverrideText(val);
+                        handleVarOverrideChange(varName, val);
+                      }}
+                      onBlur={() => {
+                        setActiveOverrideVar(null);
+                        setActiveOverrideText('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          (e.target as HTMLInputElement).blur();
+                        }
+                      }}
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-0.5 text-[11px] font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500"
                     />
                   </div>
@@ -1065,6 +1103,8 @@ export const SystemEquationsSection: React.FC<SystemEquationsSectionProps> = Rea
               <button
                 type="button"
                 onClick={() => setShowBomFlowchart(true)}
+                onMouseEnter={preloadBomFlowchart}
+                onTouchStart={preloadBomFlowchart}
                 className="px-2.5 py-1 rounded-xl bg-slate-950 hover:bg-slate-800 active:scale-95 border border-indigo-500/40 text-indigo-300 hover:text-white text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="BOM生産フローチャート（合算・依存ダイアグラム）を表示"
               >
@@ -1498,14 +1538,18 @@ export const SystemEquationsSection: React.FC<SystemEquationsSectionProps> = Rea
       )}
 
       {/* BOM Production Flowchart Modal (On-demand Mermaid Visualization) */}
-      <BomFlowchartModal
-        isOpen={showBomFlowchart}
-        onClose={() => setShowBomFlowchart(false)}
-        solveResult={solveResult}
-        precision={precision}
-        variableMemos={config.variableMemos}
-        variableCategories={config.variableCategories}
-      />
+      {showBomFlowchart && (
+        <React.Suspense fallback={null}>
+          <BomFlowchartModal
+            isOpen={showBomFlowchart}
+            onClose={() => setShowBomFlowchart(false)}
+            solveResult={solveResult}
+            precision={precision}
+            variableMemos={config.variableMemos}
+            variableCategories={config.variableCategories}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 });

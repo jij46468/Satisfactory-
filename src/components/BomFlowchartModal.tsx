@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mermaid from 'mermaid';
 import { RecipeTreeData, SystemSolveResult } from '../utils/systemSolver';
 import { formatValue } from '../utils/calculator';
 import { PrecisionMode } from '../types';
@@ -15,6 +14,7 @@ import {
   GitBranch,
   Boxes,
   HelpCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface BomFlowchartModalProps {
@@ -26,36 +26,46 @@ interface BomFlowchartModalProps {
   variableCategories?: Record<string, string>;
 }
 
-// Initialize mermaid once safely with a modern, high-contrast dark theme
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'dark',
-  securityLevel: 'loose',
-  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-  themeVariables: {
-    darkMode: true,
-    background: '#090d16',
-    primaryColor: '#1e1b4b',
-    primaryTextColor: '#f8fafc',
-    primaryBorderColor: '#6366f1',
-    lineColor: '#818cf8',
-    secondaryColor: '#064e3b',
-    tertiaryColor: '#451a03',
-    mainBkg: '#0f172a',
-    nodeBorder: '#334155',
-    clusterBkg: '#0b1120',
-    clusterBorder: '#1e293b',
-    titleColor: '#e2e8f0',
-    edgeLabelBackground: '#020617',
-  },
-  flowchart: {
-    curve: 'basis',
-    nodeSpacing: 40,
-    rankSpacing: 60,
-    padding: 16,
-    htmlLabels: true,
-  },
-});
+// Lazy singleton loader for Mermaid (saves ~4.5MB from initial app bundle)
+let mermaidPromise: Promise<any> | null = null;
+function getMermaid() {
+  if (!mermaidPromise) {
+    mermaidPromise = import('mermaid').then((m) => {
+      const mermaid = m.default;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        securityLevel: 'loose',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        themeVariables: {
+          darkMode: true,
+          background: '#090d16',
+          primaryColor: '#1e1b4b',
+          primaryTextColor: '#f8fafc',
+          primaryBorderColor: '#6366f1',
+          lineColor: '#818cf8',
+          secondaryColor: '#064e3b',
+          tertiaryColor: '#451a03',
+          mainBkg: '#0f172a',
+          nodeBorder: '#334155',
+          clusterBkg: '#0b1120',
+          clusterBorder: '#1e293b',
+          titleColor: '#e2e8f0',
+          edgeLabelBackground: '#020617',
+        },
+        flowchart: {
+          curve: 'basis',
+          nodeSpacing: 40,
+          rankSpacing: 60,
+          padding: 16,
+          htmlLabels: true,
+        },
+      });
+      return mermaid;
+    });
+  }
+  return mermaidPromise;
+}
 
 /**
  * Clean sanitization for mermaid node IDs
@@ -100,6 +110,24 @@ function escapeHtml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/**
+ * Defensive sanitizer for rendered SVG markup before DOM injection.
+ * Strips script tags, javascript: pseudo-protocols, and inline event handlers
+ * while preserving SVG styling, shapes, nodes, and layout.
+ */
+function sanitizeSvgContent(rawSvg: string): string {
+  if (!rawSvg) return '';
+  return rawSvg
+    // Strip <script>...</script> tags entirely
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Strip javascript: pseudo-protocols from attributes
+    .replace(/href\s*=\s*["']\s*javascript:[^"']*["']/gi, 'href="#"')
+    .replace(/xlink:href\s*=\s*["']\s*javascript:[^"']*["']/gi, 'xlink:href="#"')
+    // Strip inline DOM event handlers (onload, onerror, onclick, etc.)
+    .replace(/\son[a-z]+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\son[a-z]+\s*=\s*[^>\s]+/gi, '');
 }
 
 /**
@@ -213,6 +241,8 @@ export const BomFlowchartModal: React.FC<BomFlowchartModalProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [svgContent, setSvgContent] = useState<string>('');
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [mermaidCode, setMermaidCode] = useState<string>('');
@@ -223,6 +253,7 @@ export const BomFlowchartModal: React.FC<BomFlowchartModalProps> = ({
     if (!isOpen) return;
 
     let isMounted = true;
+    setIsLoading(true);
     setRenderError(null);
 
     const definition = generateMermaidBomDefinition(
@@ -235,25 +266,21 @@ export const BomFlowchartModal: React.FC<BomFlowchartModalProps> = ({
 
     const renderId = `mermaid_bom_${Date.now()}`;
 
-    // Render using mermaid API
-    mermaid
-      .render(renderId, definition)
+    // Render using dynamically loaded mermaid instance
+    getMermaid()
+      .then((mermaid) => mermaid.render(renderId, definition))
       .then((res) => {
         if (!isMounted) return;
-        if (containerRef.current) {
-          containerRef.current.innerHTML = res.svg;
-          // Apply responsive svg styling
-          const svgEl = containerRef.current.querySelector('svg');
-          if (svgEl) {
-            svgEl.style.maxWidth = '100%';
-            svgEl.style.height = 'auto';
-            svgEl.style.display = 'block';
-            svgEl.style.margin = '0 auto';
-          }
+        let formattedSvg = sanitizeSvgContent(res.svg || '');
+        if (formattedSvg && !formattedSvg.includes('max-width')) {
+          formattedSvg = formattedSvg.replace('<svg ', '<svg style="max-width:100%;height:auto;display:block;margin:0 auto;" ');
         }
+        setSvgContent(formattedSvg);
+        setIsLoading(false);
       })
       .catch((err) => {
         if (!isMounted) return;
+        setIsLoading(false);
         console.error('Mermaid render error:', err);
         setRenderError('フローチャートの自動レイアウト生成中にエラーが発生しました。数式の依存関係を確認してください。');
       });
@@ -421,6 +448,17 @@ export const BomFlowchartModal: React.FC<BomFlowchartModalProps> = ({
 
         {/* Flowchart Content Canvas Area */}
         <div className="flex-1 bg-slate-950 overflow-auto relative p-4 md:p-8">
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center space-y-4 z-20">
+              <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+              <div className="text-center space-y-1">
+                <p className="text-sm font-bold text-slate-200">フローチャート生成エンジンを準備中...</p>
+                <p className="text-xs text-slate-400">生産ツリーの依存関係と合流ルートをレイアウトしています</p>
+              </div>
+            </div>
+          )}
+
           {renderError ? (
             <div className="max-w-md mx-auto my-12 p-5 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-center space-y-3">
               <span className="text-rose-400 text-sm font-bold block">
@@ -463,6 +501,7 @@ export const BomFlowchartModal: React.FC<BomFlowchartModalProps> = ({
                 <div
                   ref={containerRef}
                   className="w-full flex justify-center items-start select-none"
+                  dangerouslySetInnerHTML={svgContent ? { __html: svgContent } : undefined}
                 />
               </div>
             </div>

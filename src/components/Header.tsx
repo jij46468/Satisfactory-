@@ -1,6 +1,6 @@
 import React from 'react';
 import { PrecisionMode, LayoutStyle } from '../types';
-import { Sparkles, History, RotateCcw, ChevronDown, Layers, Star } from 'lucide-react';
+import { Sparkles, History, RotateCcw, ChevronDown, Layers, Star, Globe } from 'lucide-react';
 
 interface HeaderProps {
   precision: PrecisionMode;
@@ -8,6 +8,7 @@ interface HeaderProps {
   onReset: () => void;
   onOpenPresets: () => void;
   onOpenHistory: () => void;
+  onOpenGithubGuide?: () => void;
   historyCount: number;
   bookmarkedCount?: number;
   layoutStyle: LayoutStyle;
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
   onReset,
   onOpenPresets,
   onOpenHistory,
+  onOpenGithubGuide,
   historyCount,
   bookmarkedCount = 0,
 }) => {
@@ -57,6 +59,24 @@ export const Header: React.FC<HeaderProps> = React.memo(({
             </select>
             <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
+
+          {/* GitHub Pages Guide Button */}
+          {onOpenGithubGuide && (
+            <button
+              type="button"
+              id="open-github-guide-button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenGithubGuide();
+              }}
+              aria-label="GitHub Pages 公開ガイドを開く"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-sky-950/50 active:scale-95 text-sky-400 hover:text-sky-300 border border-slate-700 hover:border-sky-700/60 transition-all flex items-center justify-center relative cursor-pointer"
+              title="GitHub Pages 公開ガイド & 手順"
+            >
+              <Globe className="w-4 h-4 pointer-events-none" />
+            </button>
+          )}
 
           {/* Presets Button */}
           <button

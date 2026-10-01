@@ -13,7 +13,7 @@ export interface SystemEquationRow {
 
 export interface SystemEquationConfig {
   equations: SystemEquationRow[];
-  userOverrides: Record<string, number | null>; // variable manual values
+  userOverrides: Record<string, number | string | null>; // variable manual values (supports numbers, string expressions, or null)
   variableMemos?: Record<string, string>; // user notes/labels for variables e.g. { "A": "原料A単価", "B": "包装費" }
   variableCategories?: Record<string, string>; // user manual category override e.g. { "鋼梁": "intermediate", "ネジ": "raw" }
   proportionalBalance: boolean; // if underdetermined, solve proportional variables
@@ -26,7 +26,7 @@ export interface PresetItem {
   description: string;
   category: 'math' | 'business' | 'custom';
   equations: string[];
-  userOverrides?: Record<string, number>;
+  userOverrides?: Record<string, number | string | null>;
   variableMemos?: Record<string, string>;
 }
 

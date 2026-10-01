@@ -76,6 +76,7 @@ export function normalizeEquationText(str: string): string {
     .replace(/[（〔【「『]/g, '(')
     .replace(/[）〕】」』]/g, ')')
     .replace(/[％]/g, '%')
+    .replace(/[．。]/g, '.')
     .trim();
 }
 
@@ -202,6 +203,68 @@ export function evaluateSimpleArithmetic(expr: string): number | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Normalizes any raw variable input value (number, string with arithmetic, full-width, commas, percent, etc.)
+ * to a pure finite number, or null if empty, unparseable, or unset.
+ *
+ * Supported formats:
+ * - Direct numbers: 123, -4.5
+ * - Full-width numerals and signs: １００, －３．５
+ * - Thousands separator commas (ASCII & full-width): "1,500,000", "１，５００"
+ * - Arithmetic expressions: "10 / 2", "480 * 6", "100 + 50"
+ * - Percentage: "25%" -> 0.25
+ * - Invalid/incomplete: "-", "abc", "" -> null (treated as unset/free for auto-solving)
+ */
+export function normalizeVariableValue(rawVal: unknown): number | null {
+  if (rawVal === null || rawVal === undefined) return null;
+  if (typeof rawVal === 'number') {
+    return isFinite(rawVal) && !isNaN(rawVal) ? rawVal : null;
+  }
+  if (typeof rawVal === 'string') {
+    const trimmed = rawVal.trim();
+    if (!trimmed) return null;
+
+    // Normalize full-width characters and strip thousands separator commas ("," and "，")
+    const cleanStr = normalizeEquationText(trimmed)
+      .replace(/[,，]/g, '')
+      .replace(/\s+/g, '');
+
+    if (!cleanStr) return null;
+
+    // Fast path: direct standard numeric conversion
+    const directNum = Number(cleanStr);
+    if (!isNaN(directNum) && isFinite(directNum)) {
+      return directNum;
+    }
+
+    // Secondary path: safe arithmetic evaluation (e.g. "10/2", "480 * 6", "25%")
+    const evalNum = evaluateSimpleArithmetic(cleanStr);
+    if (evalNum !== null && isFinite(evalNum) && !isNaN(evalNum)) {
+      return evalNum;
+    }
+  }
+  return null;
+}
+
+/**
+ * Normalizes an entire record of user overrides, converting mixed string/number/null values
+ * into clean Record<string, number | null>.
+ */
+export function normalizeUserOverrides(
+  overrides?: Record<string, unknown> | null
+): Record<string, number | null> {
+  if (!overrides || typeof overrides !== 'object') return {};
+  const cleaned: Record<string, number | null> = {};
+  for (const [k, v] of Object.entries(overrides)) {
+    if (!isSafeVariableName(k)) continue;
+    const norm = normalizeVariableValue(v);
+    if (norm !== null) {
+      cleaned[k] = norm;
+    }
+  }
+  return cleaned;
 }
 
 interface ParsedTerm {
@@ -575,10 +638,10 @@ export function parseSystemEquation(
  */
 export function solveStandardLinearSystem(
   config: SystemEquationConfig,
-  customOverrides?: Record<string, number | null>
+  customOverrides?: Record<string, number | string | null>
 ): SystemSolveResult {
   const activeRows = config.equations.filter((eq) => eq.isEnabled && eq.rawText.trim().length > 0);
-  const overrides = customOverrides || config.userOverrides || {};
+  const overrides = normalizeUserOverrides(customOverrides || config.userOverrides);
 
   if (activeRows.length === 0 && Object.keys(overrides).length === 0) {
     return {
@@ -1049,10 +1112,10 @@ function formatRecipeNum(val: number): string {
  */
 export function solveRecipeTreeSystem(
   config: SystemEquationConfig,
-  customOverrides?: Record<string, number | null>
+  customOverrides?: Record<string, number | string | null>
 ): SystemSolveResult | null {
   const activeRows = config.equations.filter((eq) => eq.isEnabled && eq.rawText.trim().length > 0);
-  const overrides = customOverrides || config.userOverrides || {};
+  const overrides = normalizeUserOverrides(customOverrides || config.userOverrides);
 
   if (activeRows.length === 0 && Object.keys(overrides).length === 0) {
     return {
@@ -1303,16 +1366,21 @@ export function solveRecipeTreeSystem(
  */
 export function solveSystemOfEquations(
   config: SystemEquationConfig,
-  customOverrides?: Record<string, number | null>
+  customOverrides?: Record<string, number | string | null>
 ): SystemSolveResult {
+  const overrides = normalizeUserOverrides(customOverrides || config.userOverrides);
+  const normalizedConfig: SystemEquationConfig = {
+    ...config,
+    userOverrides: overrides,
+  };
   const solverMode = config.solverMode || 'recipe_tree';
 
   if (solverMode === 'recipe_tree') {
-    const treeResult = solveRecipeTreeSystem(config, customOverrides);
+    const treeResult = solveRecipeTreeSystem(normalizedConfig, overrides);
     if (treeResult) {
       return treeResult;
     }
   }
 
-  return solveStandardLinearSystem(config, customOverrides);
+  return solveStandardLinearSystem(normalizedConfig, overrides);
 }
